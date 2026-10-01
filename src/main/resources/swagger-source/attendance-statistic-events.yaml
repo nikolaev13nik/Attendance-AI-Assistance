@@ -1,0 +1,131 @@
+swagger: '2.0'
+
+info:
+  title: Attendance Statistic Events
+  description: |
+    Async message payloads exchanged over Kafka for the monthly-statistics flow: the trigger event
+    published when a month's statistics are computed, and the enrichment request/response pair used
+    to ask the downstream AI Assistance & Notification service for a trend analysis. Schema-only spec
+    (no paths) - used purely to generate att.messaging.dto via openapi-generator, the same way
+    attendance-time-tracking.yaml drives att.dto.
+  version: 1.0.0
+
+consumes:
+  - application/json
+produces:
+  - application/json
+
+paths: { }
+
+definitions:
+
+  TenantUserContext:
+    type: object
+    description: Tenant/user identity shared by every statistic event
+    required:
+      - tenantId
+      - userId
+    properties:
+      tenantId:
+        type: integer
+        format: int32
+        description: Unique identifier of the tenant
+        example: 100
+      userId:
+        type: integer
+        format: int32
+        description: Unique identifier of the user
+        example: 42
+
+  StatisticSnapshot:
+    type: object
+    description: Work-time statistic figures for a single month, shared by the computed-month event
+      and each history entry sent for analysis
+    properties:
+      workDays:
+        type: integer
+        format: int32
+        description: Total number of days worked in the month
+        example: 22
+      overtimeHours:
+        type: number
+        format: double
+        description: Total overtime hours worked in the month
+        example: 15.5
+      totalWorkHours:
+        type: number
+        format: double
+        description: Total hours worked in the month
+        example: 176.25
+      vacationDays:
+        type: number
+        format: double
+        description: Total vacation days taken in the month
+        example: 1.0
+      sickDays:
+        type: number
+        format: double
+        description: Total sick days taken in the month
+        example: 0.0
+
+  ReportRequesterContext:
+    type: object
+    description: Identity of the user who requested the report (the JWT sub of the caller), resolved from
+      Attendance-Accounting and carried to every statistic topic so the downstream AI Assistance &
+      Notification service knows who to address and where to send the analysis. Optional on purpose -
+      messages produced before this contract existed must stay deserializable.
+    properties:
+      reportUserName:
+        type: string
+        description: First name of the user who requested the report
+        example: John
+      reportUserLastName:
+        type: string
+        description: Last name of the user who requested the report
+        example: Doe
+      reportEmail:
+        type: string
+        format: email
+        description: Email address the analysis is sent to
+        example: john.doe@example.com
+
+  MonthStatisticEvent:
+    description: Published when a user's monthly statistics have been computed; triggers enrichment
+      and forwarding to the AI Assistance & Notification service. Carries only the identity and target
+      month - the consumer looks up the statistic figures (including the target month's) from the DB.
+    allOf:
+      - $ref: '#/definitions/TenantUserContext'
+      - $ref: '#/definitions/ReportRequesterContext'
+      - type: object
+        required:
+          - yearMonth
+        properties:
+          yearMonth:
+            type: string
+            format: year-month
+            description: Target year and month (e.g., 2026-07)
+
+  UserStatisticHistoryEntryDto:
+    description: One month of historical statistics, used as an entry in the analysis-request history
+    allOf:
+      - $ref: '#/definitions/StatisticSnapshot'
+      - type: object
+        properties:
+          yearMonth:
+            type: string
+            format: year-month
+            description: Target year and month (e.g., 2026-07)
+
+  UserStatisticAnalysisRequestEvent:
+    description: Republished by this service after enriching a MonthStatisticEvent with recent
+      history, requesting AI trend analysis for the user
+    allOf:
+      - $ref: '#/definitions/TenantUserContext'
+      - $ref: '#/definitions/ReportRequesterContext'
+      - type: object
+        properties:
+          entries:
+            type: array
+            description: Up to 7 months of statistic history, most recent first
+            items:
+              $ref: '#/definitions/UserStatisticHistoryEntryDto'
