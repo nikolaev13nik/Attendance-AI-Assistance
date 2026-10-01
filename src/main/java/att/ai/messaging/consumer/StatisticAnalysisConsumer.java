@@ -11,6 +11,7 @@ import java.util.Set;
 import java.util.function.Consumer;
 
 import att.ai.messaging.dto.UserStatisticAnalysisRequestEvent;
+import att.ai.notification.EmailNotificationService;
 import att.ai.service.StatisticAnalysisService;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
@@ -34,6 +35,7 @@ public class StatisticAnalysisConsumer {
 
     private final Validator validator;
     private final StatisticAnalysisService statisticAnalysisService;
+    private final EmailNotificationService emailNotificationService;
 
     @Bean
     public Consumer<Message<UserStatisticAnalysisRequestEvent>> userStatisticAnalysis() {
@@ -47,9 +49,7 @@ public class StatisticAnalysisConsumer {
                 event.getTenantId(), event.getUserId(), event.getEntries().size(),
                 event.getReportUserName(), event.getReportUserLastName(), event.getReportEmail());
 
-        String analysis = statisticAnalysisService.analyse(event);
-        // step 5 replaces this with the email dispatch to event.getReportEmail()
-        log.info("Analysis for tenant:{} user:{}:\n{}", event.getTenantId(), event.getUserId(), analysis);
+        emailNotificationService.notifyRequester(event, statisticAnalysisService.analyse(event));
     }
 
     /**

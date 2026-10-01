@@ -2,8 +2,11 @@ package att.ai.service;
 
 import org.springframework.stereotype.Service;
 
+import java.util.List;
+
 import att.ai.llm.LlmAnalysisClient;
 import att.ai.messaging.dto.UserStatisticAnalysisRequestEvent;
+import att.ai.messaging.dto.UserStatisticHistoryEntryDto;
 import lombok.RequiredArgsConstructor;
 
 /**
@@ -18,7 +21,8 @@ public class StatisticAnalysisService {
     private final PromptComposer promptComposer;
     private final LlmAnalysisClient llmAnalysisClient;
 
-    public String analyse(UserStatisticAnalysisRequestEvent event) {
-        return llmAnalysisClient.analyse(promptComposer.compose(event));
+    public StatisticAnalysis analyse(UserStatisticAnalysisRequestEvent event) {
+        List<UserStatisticHistoryEntryDto> history = promptComposer.historyWindow(event.getEntries());
+        return new StatisticAnalysis(history, llmAnalysisClient.analyse(promptComposer.compose(history)));
     }
 }

@@ -7,7 +7,6 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
-import att.ai.messaging.dto.UserStatisticAnalysisRequestEvent;
 import att.ai.messaging.dto.UserStatisticHistoryEntryDto;
 
 /**
@@ -37,9 +36,10 @@ public class PromptComposer {
     @Value("${att.ai.analysis.history-months:6}")
     private int historyMonths;
 
-    public String compose(UserStatisticAnalysisRequestEvent event) {
-        List<UserStatisticHistoryEntryDto> window = historyWindow(event.getEntries());
-
+    /**
+     * @param window the months to show, as returned by {@link #historyWindow(List)}
+     */
+    public String compose(List<UserStatisticHistoryEntryDto> window) {
         StringBuilder prompt = new StringBuilder(INSTRUCTIONS);
         if (window.isEmpty()) {
             return prompt.append("No monthly statistics were recorded for this employee.").toString();
@@ -61,7 +61,7 @@ public class PromptComposer {
      * capped by the producer, but it is re-sorted here so the prompt stays deterministic regardless of how
      * the message was produced, and entries with no month are dropped as unusable.
      */
-    List<UserStatisticHistoryEntryDto> historyWindow(List<UserStatisticHistoryEntryDto> entries) {
+    public List<UserStatisticHistoryEntryDto> historyWindow(List<UserStatisticHistoryEntryDto> entries) {
         if (entries == null) {
             return List.of();
         }
