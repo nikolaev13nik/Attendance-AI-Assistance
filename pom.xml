@@ -21,9 +21,36 @@
 		<java.version>17</java.version>
 		<openapi-generator.version>7.23.0</openapi-generator.version>
 		<swagger-annotations.version>2.2.43</swagger-annotations.version>
+		<spring-cloud.version>2025.1.2</spring-cloud.version>
 	</properties>
 
+	<!-- Spring Cloud is released as a train, not per-artifact: this BOM pins stream + the Kafka binder
+	     to versions known to work with each other and with Boot 4.1. Same train as TimeTracking. -->
+	<dependencyManagement>
+		<dependencies>
+			<dependency>
+				<groupId>org.springframework.cloud</groupId>
+				<artifactId>spring-cloud-dependencies</artifactId>
+				<version>${spring-cloud.version}</version>
+				<type>pom</type>
+				<scope>import</scope>
+			</dependency>
+		</dependencies>
+	</dependencyManagement>
+
 	<dependencies>
+		<!-- The only inbound channel this service has. spring-cloud-stream is the programming model
+		     (a java.util.function.Consumer bean becomes a subscriber); the binder is what attaches
+		     that function to a real Kafka topic. -->
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-stream</artifactId>
+		</dependency>
+		<dependency>
+			<groupId>org.springframework.cloud</groupId>
+			<artifactId>spring-cloud-stream-binder-kafka</artifactId>
+		</dependency>
+
 		<!-- No controller lives here, but actuator serves /actuator/health over HTTP for the container
 		     and Kubernetes probes, and that needs a servlet container. -->
 		<dependency>
