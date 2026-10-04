@@ -27,17 +27,19 @@ secret:
 # Key in attendance-config holding the broker list.
 kafkaBootstrapServersKey: KAFKA_BOOTSTRAP_SERVERS
 
-# SMTP. Host/port/from are not secret and only this service reads them, so they live in this chart's own
-# ConfigMap - the platform ConfigMap is for values more than one service needs.
+# SMTP. Split by sensitivity, not by whether the value is technically a password:
+#   - protocol knobs below live here, and therefore in git, so ArgoCD renders them faithfully
+#   - the account itself (host, sender, username, password) comes from attendance-secrets, which is
+#     created by hand from .env and never enters git. This repo is public.
 mail:
-  host: ""
   port: "587"
-  from: no-reply@attendance.local
   smtpAuth: "true"
   starttls: "true"
   enabled: "true"
 
-  # Credentials come from the shared Secret, which is created by hand from .env.
+  # Keys read out of attendance-secrets. These are key NAMES, not values.
+  hostKey: MAIL_HOST
+  fromKey: MAIL_FROM
   usernameKey: MAIL_USERNAME
   passwordKey: MAIL_PASSWORD
 

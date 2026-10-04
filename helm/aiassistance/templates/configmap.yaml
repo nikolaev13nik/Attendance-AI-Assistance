@@ -4,19 +4,16 @@ metadata:
   # Service-owned config. Named after the service so it is obvious who may change it; the shared
   # attendance-config is only for values more than one service reads.
   name: aiassistance-config
-  namespace: { { .Values.namespace } }
+  namespace: {{ .Values.namespace }}
 data:
-  # Non-secret SMTP settings. The username and password are in the shared Secret instead.
-  { { - with .Values.mail.host } }
-  MAIL_HOST: { { . | quote } }
-  { { - end } }
-  MAIL_PORT: { { .Values.mail.port | quote } }
-  MAIL_FROM: { { .Values.mail.from | quote } }
-  MAIL_SMTP_AUTH: { { .Values.mail.smtpAuth | quote } }
-  MAIL_SMTP_STARTTLS: { { .Values.mail.starttls | quote } }
+  # SMTP protocol knobs only. The account - host, sender, username, password - comes from
+  # attendance-secrets, so nothing identifying is committed to this public repo.
+  MAIL_PORT: {{ .Values.mail.port | quote }}
+  MAIL_SMTP_AUTH: {{ .Values.mail.smtpAuth | quote }}
+  MAIL_SMTP_STARTTLS: {{ .Values.mail.starttls | quote }}
   # Set to "false" to run the consumer without sending anything - useful when verifying the pipeline
   # before credentials exist.
-  MAIL_ENABLED: { { .Values.mail.enabled | quote } }
+  MAIL_ENABLED: {{ .Values.mail.enabled | quote }}
 
   # Relaxed binding turns this into att.ai.analysis.history-months.
-  ATT_AI_ANALYSIS_HISTORYMONTHS: { { .Values.analysis.historyMonths | quote } }
+  ATT_AI_ANALYSIS_HISTORYMONTHS: {{ .Values.analysis.historyMonths | quote }}
