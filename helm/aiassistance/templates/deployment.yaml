@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: aiassistance
+  namespace: { { .Values.namespace } }
+spec:
+  replicas: { { .Values.replicaCount } }
+
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      # Start the new pod before stopping the old one. With a Kafka consumer this briefly puts two members
+      # in the group, which is safe: partitions are reassigned, not duplicated.
+      maxSurge: { { .Values.strategy.maxSurge } }
+      maxUnavailable: { { .Values.strategy.maxUnavailable } }
+
+  selector:
+    matchLabels:
+      app: aiassistance
+  template:
+    metadata:
+      labels:
+        app: aiassistance
+    spec:
+      containers:
+        - name: aiassistance
+
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+          imagePullPolicy: { { .Values.image.pullPolicy } }
+
+          ports:
+            # Declared for documentation and probes only - no Service routes to it.
+            - containerPort: { { .Values.containerPort } }
+
+          env:
+            # Containers get no memory limit awareness for free: without this the JVM sizes its heap from
+            # the node's RAM and gets OOM-killed against the pod limit below.
+            - name: JAVA_TOOL_OPTIONS
+              value: { { .Values.javaToolOptions | quote } }
+
+            # The one value shared with the rest of the platform: where Kafka is.
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                configMapKeyRef:
+                  name: { { .Values.config.name } }
+                  key: { { .Values.kafkaBootstrapServersKey } }
+
+            # Everything SMTP-shaped except the credentials, from this chart's own ConfigMap.
+            { { - range $key := list "MAIL_PORT" "MAIL_FROM" "MAIL_SMTP_AUTH" "MAIL_SMTP_STARTTLS" "MAIL_ENABLED" } }
+            - name: { { $key } }
+              valueFrom:
+                configMapKeyRef:
+                  name: aiassistance-config
+                  key: { { $key } }
+            { { - end } }
+            { { - if .Values.mail.host } }
+            - name: MAIL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: aiassistance-config
+                  key: MAIL_HOST
+            { { - end } }
+
+            - name: ATT_AI_ANALYSIS_HISTORYMONTHS
+              valueFrom:
+                configMapKeyRef:
+                  name: aiassistance-config
+                  key: ATT_AI_ANALYSIS_HISTORYMONTHS
+
+            # Credentials from the hand-created Secret. optional:true so the pod still starts before the
+            # SMTP account exists - with MAIL_ENABLED=false the service then runs without sending.
+            - name: MAIL_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: { { .Values.secret.name } }
+                  key: { { .Values.mail.usernameKey } }
+                  optional: true
+            - name: MAIL_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: { { .Values.secret.name } }
+                  key: { { .Values.mail.passwordKey } }
+                  optional: true
+
+          resources:
+            { { - toYaml .Values.resources | nindent 12 } }
+
+          # Three probes off the same endpoint, differing only in timing: startup gives the JVM up to
+          # 4 minutes to boot, readiness reacts in 10s, liveness checks slowly to avoid restart storms.
+          # Note the mail health indicator is switched off in application.properties, so an unreachable
+          # SMTP server cannot turn these red.
+          startupProbe:
+            httpGet:
+              path: { { .Values.probes.path } }
+              port: { { .Values.containerPort } }
+            periodSeconds: { { .Values.probes.startup.periodSeconds } }
+            failureThreshold: { { .Values.probes.startup.failureThreshold } }
+
+          readinessProbe:
+            httpGet:
+              path: { { .Values.probes.path } }
+              port: { { .Values.containerPort } }
+            periodSeconds: { { .Values.probes.readiness.periodSeconds } }
+            failureThreshold: { { .Values.probes.readiness.failureThreshold } }
+
+          livenessProbe:
+            httpGet:
+              path: { { .Values.probes.path } }
+              port: { { .Values.containerPort } }
+            periodSeconds: { { .Values.probes.liveness.periodSeconds } }
+            failureThreshold: { { .Values.probes.liveness.failureThreshold } }

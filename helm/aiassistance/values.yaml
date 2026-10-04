@@ -1,0 +1,74 @@
+namespace: attendance
+
+# One replica is deliberate. The consumer group would let several replicas share the topic's partitions,
+# but there is no load to spread yet, and one consumer means one email per request with no ordering
+# questions. Raise it only when message volume needs it.
+replicaCount: 1
+
+image:
+  # GHCR lowercases repository names, so the pushed image is attendance-ai-assistance, not the repo's casing.
+  repository: ghcr.io/nikolaev13nik/attendance-ai-assistance
+
+  # Empty means "use Chart.appVersion".
+  tag: ""
+
+  pullPolicy: IfNotPresent
+
+# The container port. There is no Service in this chart: nothing in the cluster calls this service, its
+# only input is Kafka. The probes below reach the port directly on the pod.
+containerPort: 8080
+
+# Objects owned by the platform chart, read here by name only.
+config:
+  name: attendance-config
+secret:
+  name: attendance-secrets
+
+# Key in attendance-config holding the broker list.
+kafkaBootstrapServersKey: KAFKA_BOOTSTRAP_SERVERS
+
+# SMTP. Host/port/from are not secret and only this service reads them, so they live in this chart's own
+# ConfigMap - the platform ConfigMap is for values more than one service needs.
+mail:
+  host: ""
+  port: "587"
+  from: no-reply@attendance.local
+  smtpAuth: "true"
+  starttls: "true"
+  enabled: "true"
+
+  # Credentials come from the shared Secret, which is created by hand from .env.
+  usernameKey: MAIL_USERNAME
+  passwordKey: MAIL_PASSWORD
+
+# Months of history to send to the model. The producer sends 7 (target month + 6 before it).
+analysis:
+  historyMonths: "6"
+
+javaToolOptions: "-XX:MaxRAMPercentage=75"
+
+# Smaller than the sibling services: no servlet traffic, no JPA, no connection pools - just a consumer
+# thread and an SMTP client.
+resources:
+  requests:
+    memory: 256Mi
+    cpu: 100m
+  limits:
+    memory: 512Mi
+    cpu: 500m
+
+strategy:
+  maxSurge: 1
+  maxUnavailable: 0
+
+probes:
+  path: /actuator/health
+  startup:
+    periodSeconds: 5
+    failureThreshold: 48
+  readiness:
+    periodSeconds: 10
+    failureThreshold: 3
+  liveness:
+    periodSeconds: 30
+    failureThreshold: 3
