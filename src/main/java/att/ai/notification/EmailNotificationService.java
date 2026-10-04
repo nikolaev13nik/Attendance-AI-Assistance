@@ -49,7 +49,7 @@ public class EmailNotificationService {
         }
 
         mailSender.send(buildMessage(event, analysis));
-        log.info("Analysis for tenant:{} user:{} sent to {}",
+        log.info("Analysis for tenant :{} user:{} sent to {}",
                 event.getTenantId(), event.getUserId(), event.getReportEmail());
     }
 
