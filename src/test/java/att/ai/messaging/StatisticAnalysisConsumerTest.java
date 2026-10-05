@@ -12,7 +12,6 @@ import java.util.function.Consumer;
 import att.ai.BaseAiAssistanceTest;
 import att.ai.messaging.consumer.StatisticAnalysisConsumer;
 import att.ai.messaging.dto.UserStatisticAnalysisRequestEvent;
-import att.ai.notification.EmailNotificationService;
 import att.ai.service.StatisticAnalysisService;
 import jakarta.mail.internet.MimeMessage;
 import jakarta.validation.ConstraintViolationException;
@@ -38,12 +37,8 @@ class StatisticAnalysisConsumerTest extends BaseAiAssistanceTest {
     @Autowired
     private StatisticAnalysisService statisticAnalysisService;
 
-    @Autowired
-    private EmailNotificationService emailNotificationService;
-
     private Consumer<Message<UserStatisticAnalysisRequestEvent>> analysisConsumer() {
-        return new StatisticAnalysisConsumer(validator, statisticAnalysisService, emailNotificationService)
-                .userStatisticAnalysis();
+        return new StatisticAnalysisConsumer(validator, statisticAnalysisService).userStatisticAnalysis();
     }
 
     private void consume(UserStatisticAnalysisRequestEvent event) {
@@ -89,6 +84,19 @@ class StatisticAnalysisConsumerTest extends BaseAiAssistanceTest {
                 "Reason: with no months there is no period to name");
         assertTrue(bodyOf(captor.getValue()).contains("No monthly statistics were recorded"),
                 "Reason: the requester asked for a report and deserves an answer, even an empty one");
+    }
+
+    @Test
+    @DisplayName("a request whose entries field is null is consumed, not NPE'd in the log line")
+    void consume_nullEntriesIsConsumedTest() throws Exception {
+        // "entries": null deserialises to a null field, which the pipeline handles as an empty history -
+        // counting it unguarded while logging would DLQ a message nothing can fix by retrying
+        consume(eventBuilder().entries(null).build());
+
+        ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
+        verify(mailSender).send(captor.capture());
+        assertEquals("Work-time analysis for user 7", captor.getValue().getSubject(),
+                "Reason: a null history is an empty one, so the requester still gets an answer");
     }
 
     @Test

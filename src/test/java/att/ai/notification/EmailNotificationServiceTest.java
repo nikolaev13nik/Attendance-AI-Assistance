@@ -4,13 +4,12 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.List;
 
 import att.ai.BaseAiAssistanceTest;
+import att.ai.config.AssistanceConfiguration;
 import att.ai.messaging.dto.UserStatisticAnalysisRequestEvent;
-import att.ai.service.StatisticAnalysis;
 import jakarta.mail.Message.RecipientType;
 import jakarta.mail.internet.MimeMessage;
 
@@ -27,9 +26,11 @@ class EmailNotificationServiceTest extends BaseAiAssistanceTest {
     @Autowired
     private EmailNotificationService emailNotificationService;
 
-    private StatisticAnalysis analysis() {
-        return new StatisticAnalysis(sixMonthWindow(), "Workload is steady.");
-    }
+    /**
+     * The same bean the service reads, so a test can retune it - and must put it back afterwards.
+     */
+    @Autowired
+    private AssistanceConfiguration configuration;
 
     private MimeMessage captureSentMessage() {
         ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
@@ -38,9 +39,9 @@ class EmailNotificationServiceTest extends BaseAiAssistanceTest {
     }
 
     @Test
-    @DisplayName("a complete event produces one HTML message addressed to reportEmail")
-    void notifyRequester_sendsHtmlMessageToReportEmailTest() throws Exception {
-        emailNotificationService.notifyRequester(fullEvent(), analysis());
+    @DisplayName("a complete context produces one HTML message addressed to reportEmail")
+    void execute_sendsHtmlMessageToReportEmailTest() throws Exception {
+        emailNotificationService.execute(analysedContext());
 
         MimeMessage sent = captureSentMessage();
         assertEquals(REPORT_EMAIL, sent.getRecipients(RecipientType.TO)[0].toString(),
@@ -57,11 +58,11 @@ class EmailNotificationServiceTest extends BaseAiAssistanceTest {
 
     @Test
     @DisplayName("no recipient on the event - nothing is sent and nothing is thrown")
-    void notifyRequester_blankReportEmailSkipsSendingTest() {
+    void execute_blankReportEmailSkipsSendingTest() {
         UserStatisticAnalysisRequestEvent noRecipient = UserStatisticAnalysisRequestEvent.builder()
                 .tenantId(TENANT_ID).userId(USER_ID).reportEmail("  ").entries(sevenMonthHistory()).build();
 
-        emailNotificationService.notifyRequester(noRecipient, analysis());
+        emailNotificationService.execute(analysedContext(noRecipient, sixMonthWindow(), ANALYSIS_TEXT));
 
         // throwing here would push the message to the DLQ, alerting on something no retry can fix
         verify(mailSender, never()).send(any(MimeMessage.class));
@@ -69,40 +70,40 @@ class EmailNotificationServiceTest extends BaseAiAssistanceTest {
 
     @Test
     @DisplayName("a missing reportEmail field is treated the same as a blank one")
-    void notifyRequester_nullReportEmailSkipsSendingTest() {
+    void execute_nullReportEmailSkipsSendingTest() {
         UserStatisticAnalysisRequestEvent noRecipient = UserStatisticAnalysisRequestEvent.builder()
                 .tenantId(TENANT_ID).userId(USER_ID).entries(sevenMonthHistory()).build();
 
-        emailNotificationService.notifyRequester(noRecipient, analysis());
+        emailNotificationService.execute(analysedContext(noRecipient, sixMonthWindow(), ANALYSIS_TEXT));
 
         verify(mailSender, never()).send(any(MimeMessage.class));
     }
 
     @Test
     @DisplayName("with notifications disabled the pipeline runs but sends nothing")
-    void notifyRequester_disabledSendsNothingTest() {
-        ReflectionTestUtils.setField(emailNotificationService, "enabled", false);
+    void execute_disabledSendsNothingTest() {
+        configuration.setNotificationEnabled(false);
         try {
-            emailNotificationService.notifyRequester(fullEvent(), analysis());
+            emailNotificationService.execute(analysedContext());
             verify(mailSender, never()).send(any(MimeMessage.class));
         } finally {
-            ReflectionTestUtils.setField(emailNotificationService, "enabled", true);
+            configuration.setNotificationEnabled(true);
         }
     }
 
     @Test
     @DisplayName("an unusable from address surfaces as EmailDeliveryException, which the binder retries")
-    void notifyRequester_unbuildableMessageThrowsDeliveryExceptionTest() {
-        ReflectionTestUtils.setField(emailNotificationService, "from", "not a valid address");
+    void execute_unbuildableMessageThrowsDeliveryExceptionTest() {
+        configuration.setNotificationFrom("not a valid address");
         try {
             assertThrows(EmailDeliveryException.class,
-                    () -> emailNotificationService.notifyRequester(fullEvent(),
-                            new StatisticAnalysis(List.of(), "Workload is steady.")),
+                    () -> emailNotificationService.execute(
+                            analysedContext(fullEvent(), List.of(), ANALYSIS_TEXT)),
                     "Reason: a build failure must be an unchecked exception the binder can retry, not a "
                             + "checked MessagingException leaking out of the consumer");
             verify(mailSender, never()).send(any(MimeMessage.class));
         } finally {
-            ReflectionTestUtils.setField(emailNotificationService, "from", FROM_ADDRESS);
+            configuration.setNotificationFrom(FROM_ADDRESS);
         }
     }
 }

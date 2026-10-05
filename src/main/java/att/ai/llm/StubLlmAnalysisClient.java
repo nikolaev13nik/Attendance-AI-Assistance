@@ -4,14 +4,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
-/**
- * Placeholder analysis so the whole pipeline - consume, compose, notify - can be run and tested before any
- * model is wired up. Returns a fixed text and logs the prompt it was given.
- * <p>
- * When a real client arrives, gate the two implementations on a property (for example
- * {@code att.ai.llm.provider}) rather than deleting this one: it keeps the pipeline testable without
- * calling out to a paid API.
- */
 @Service
 public class StubLlmAnalysisClient implements LlmAnalysisClient {
 

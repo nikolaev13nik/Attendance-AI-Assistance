@@ -1,56 +1,36 @@
 namespace: attendance
 
-# One replica is deliberate. The consumer group would let several replicas share the topic's partitions,
-# but there is no load to spread yet, and one consumer means one email per request with no ordering
-# questions. Raise it only when message volume needs it.
 replicaCount: 1
 
 image:
-  # GHCR lowercases repository names, so the pushed image is attendance-ai-assistance, not the repo's casing.
   repository: ghcr.io/nikolaev13nik/attendance-ai-assistance
-
-  # Empty means "use Chart.appVersion".
   tag: ""
-
   pullPolicy: IfNotPresent
 
-# The container port. There is no Service in this chart: nothing in the cluster calls this service, its
-# only input is Kafka. The probes below reach the port directly on the pod.
 containerPort: 8080
 
-# Objects owned by the platform chart, read here by name only.
 config:
   name: attendance-config
 secret:
   name: attendance-secrets
 
-# Key in attendance-config holding the broker list.
 kafkaBootstrapServersKey: KAFKA_BOOTSTRAP_SERVERS
 
-# SMTP. Split by sensitivity, not by whether the value is technically a password:
-#   - protocol knobs below live here, and therefore in git, so ArgoCD renders them faithfully
-#   - the account itself (host, sender, username, password) comes from attendance-secrets, which is
-#     created by hand from .env and never enters git. This repo is public.
 mail:
   port: "587"
   smtpAuth: "true"
   starttls: "true"
   enabled: "true"
-
-  # Keys read out of attendance-secrets. These are key NAMES, not values.
   hostKey: MAIL_HOST
   fromKey: MAIL_FROM
   usernameKey: MAIL_USERNAME
   passwordKey: MAIL_PASSWORD
 
-# Months of history to send to the model. The producer sends 7 (target month + 6 before it).
 analysis:
   historyMonths: "6"
 
 javaToolOptions: "-XX:MaxRAMPercentage=75"
 
-# Smaller than the sibling services: no servlet traffic, no JPA, no connection pools - just a consumer
-# thread and an SMTP client.
 resources:
   requests:
     memory: 256Mi

@@ -5,31 +5,26 @@ import org.springframework.web.util.HtmlUtils;
 
 import java.util.List;
 
+import att.ai.context.AnalysisContext;
 import att.ai.messaging.dto.UserStatisticAnalysisRequestEvent;
 import att.ai.messaging.dto.UserStatisticHistoryEntryDto;
-import att.ai.service.StatisticAnalysis;
 
-/**
- * Renders the subject and HTML body of the analysis email. Plain string building on purpose: one email with
- * one layout does not justify pulling in a template engine, and this keeps the output visible in one place.
- * Swap in Thymeleaf if the service ever grows a second message type.
- */
 @Component
-public class EmailContentBuilder {
+public class EmailContentHandler {
 
     private static final String NOT_RECORDED = "&ndash;";
 
-    public String subject(UserStatisticAnalysisRequestEvent event, StatisticAnalysis analysis) {
-        List<UserStatisticHistoryEntryDto> history = analysis.history();
+    public String subject(AnalysisContext context) {
+        List<UserStatisticHistoryEntryDto> history = context.getHistory();
+        Integer userId = context.getEvent().getUserId();
         if (history.isEmpty()) {
-            return "Work-time analysis for user %d".formatted(event.getUserId());
+            return "Work-time analysis for user %d".formatted(userId);
         }
-        // history is newest first, so the last entry is the start of the period
-        return "Work-time analysis for user %d (%s - %s)".formatted(event.getUserId(),
+        return "Work-time analysis for user %d (%s - %s)".formatted(userId,
                 history.get(history.size() - 1).getYearMonth(), history.get(0).getYearMonth());
     }
 
-    public String htmlBody(UserStatisticAnalysisRequestEvent event, StatisticAnalysis analysis) {
+    public String htmlBody(AnalysisContext context) {
         return """
                 <!DOCTYPE html>
                 <html lang="en">
@@ -43,11 +38,10 @@ public class EmailContentBuilder {
                   Please do not reply to this message.</p>
                 </body>
                 </html>"""
-                .formatted(greeting(event), event.getUserId(), paragraphs(analysis.analysis()),
-                        historyTable(analysis.history()));
+            .formatted(greeting(context.getEvent()), context.getEvent().getUserId(),
+                paragraphs(context.getAnalysis()), historyTable(context.getHistory()));
     }
 
-    /** Names are optional in the event contract, so the greeting degrades instead of printing "null". */
     private String greeting(UserStatisticAnalysisRequestEvent event) {
         String name = "%s %s".formatted(
                 event.getReportUserName() == null ? "" : event.getReportUserName(),
@@ -55,10 +49,6 @@ public class EmailContentBuilder {
         return name.isEmpty() ? "Hello," : "Hello %s,".formatted(HtmlUtils.htmlEscape(name));
     }
 
-    /**
-     * The analysis is model output, so it is escaped before being placed in HTML - a model that emits a
-     * stray angle bracket must not be able to inject markup into the email.
-     */
     private String paragraphs(String analysis) {
         return analysis.lines()
                 .map(String::strip)

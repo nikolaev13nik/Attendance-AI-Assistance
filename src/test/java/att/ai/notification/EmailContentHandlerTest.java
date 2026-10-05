@@ -8,44 +8,37 @@ import java.util.List;
 
 import att.ai.BaseAiAssistanceTest;
 import att.ai.messaging.dto.UserStatisticAnalysisRequestEvent;
-import att.ai.service.StatisticAnalysis;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DisplayName("EmailContentBuilder: renders the subject and HTML body of the analysis email")
-class EmailContentBuilderTest extends BaseAiAssistanceTest {
-
-    private static final String ANALYSIS_TEXT = "Workload is steady.\n\nOvertime is occasional.";
+class EmailContentHandlerTest extends BaseAiAssistanceTest {
 
     @Autowired
-    private EmailContentBuilder contentBuilder;
-
-    private StatisticAnalysis analysisOverWindow() {
-        return new StatisticAnalysis(sixMonthWindow(), ANALYSIS_TEXT);
-    }
+    private EmailContentHandler contentBuilder;
 
     @Test
     @DisplayName("the subject names the analysed user and the period the history covers")
     void subject_namesUserAndPeriodTest() {
-        // subject() reads the ends of the window, which is newest-first - so this also pins that it is
-        // handed an already-ordered list rather than the raw entries off the event
+        // subject() reads the ends of the window, which is newest-first - so this also pins that the context
+        // carries an already-ordered window rather than the raw entries off the event
         assertEquals("Work-time analysis for user 7 (2023-08 - 2024-01)",
-                contentBuilder.subject(fullEvent(), analysisOverWindow()));
+                contentBuilder.subject(analysedContext()));
     }
 
     @Test
     @DisplayName("with no history the subject drops the period instead of printing an empty range")
     void subject_withoutHistoryOmitsPeriodTest() {
         assertEquals("Work-time analysis for user 7",
-                contentBuilder.subject(fullEvent(), new StatisticAnalysis(List.of(), ANALYSIS_TEXT)));
+                contentBuilder.subject(analysedContext(fullEvent(), List.of(), ANALYSIS_TEXT)));
     }
 
     @Test
     @DisplayName("the body greets the requester by name and tables every month of the window")
     void htmlBody_greetsRequesterAndTablesHistoryTest() {
-        String body = contentBuilder.htmlBody(fullEvent(), analysisOverWindow());
+        String body = contentBuilder.htmlBody(analysedContext());
 
         assertTrue(body.contains("Hello John Doe,"),
                 "Reason: the email goes to the requester, so it should address them");
@@ -65,7 +58,7 @@ class EmailContentBuilderTest extends BaseAiAssistanceTest {
         UserStatisticAnalysisRequestEvent anonymous = UserStatisticAnalysisRequestEvent.builder()
                 .tenantId(TENANT_ID).userId(USER_ID).reportEmail(REPORT_EMAIL).build();
 
-        String body = contentBuilder.htmlBody(anonymous, analysisOverWindow());
+        String body = contentBuilder.htmlBody(analysedContext(anonymous, sixMonthWindow(), ANALYSIS_TEXT));
 
         assertTrue(body.contains("<p>Hello,</p>"),
                 "Reason: first and last name are optional in the event contract");
@@ -75,8 +68,8 @@ class EmailContentBuilderTest extends BaseAiAssistanceTest {
     @Test
     @DisplayName("model output is escaped - a stray tag in the analysis cannot inject markup")
     void htmlBody_escapesModelOutputTest() {
-        String body = contentBuilder.htmlBody(fullEvent(),
-                new StatisticAnalysis(List.of(), "Trend <script>alert(1)</script> unclear."));
+        String body = contentBuilder.htmlBody(
+                analysedContext(fullEvent(), List.of(), "Trend <script>alert(1)</script> unclear."));
 
         assertTrue(body.contains("&lt;script&gt;"),
                 "Reason: the analysis is untrusted text and must be escaped before entering HTML");
@@ -86,11 +79,11 @@ class EmailContentBuilderTest extends BaseAiAssistanceTest {
     @Test
     @DisplayName("an unrecorded figure shows as a dash and an empty history says so")
     void htmlBody_rendersMissingDataExplicitlyTest() {
-        String withGap = contentBuilder.htmlBody(fullEvent(), analysisOverWindow());
+        String withGap = contentBuilder.htmlBody(analysedContext());
         assertTrue(withGap.contains("&ndash;"),
                 "Reason: 2023-11 has no sickDays in the fixture, which must not render as 0.0");
 
-        String empty = contentBuilder.htmlBody(fullEvent(), new StatisticAnalysis(List.of(), ANALYSIS_TEXT));
+        String empty = contentBuilder.htmlBody(analysedContext(fullEvent(), List.of(), ANALYSIS_TEXT));
         assertTrue(empty.contains("No monthly statistics were recorded for this period."),
                 "Reason: an empty period is stated, not shown as an empty table");
         assertFalse(empty.contains("<table"), "Reason: no table element when there is nothing to tabulate");

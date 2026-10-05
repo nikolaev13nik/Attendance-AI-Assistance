@@ -3,9 +3,6 @@ name: aiassistance
 description: AI assistance service. Consumes month-statistic analysis requests from Kafka and emails the analysis to the requester.
 type: application
 
-# The CHART version - bump when templates or values change.
 version: 0.2.0
 
-# The default image tag - bump to deploy a new build. This is what ArgoCD deploys, since it renders
-# from git with no --set, so it must track the tag CI actually produced.
 appVersion: "1.0.1"

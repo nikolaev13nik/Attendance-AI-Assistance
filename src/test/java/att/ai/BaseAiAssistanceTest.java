@@ -9,17 +9,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import java.time.YearMonth;
 import java.util.List;
 
+import att.ai.context.AnalysisContext;
 import att.ai.messaging.dto.UserStatisticAnalysisRequestEvent;
 import att.ai.messaging.dto.UserStatisticHistoryEntryDto;
 import jakarta.mail.internet.MimeMessage;
 
 import static org.mockito.Mockito.when;
 
-/**
- * Boots the real application context without a web server and without Kafka (see
- * src/test/resources/application.properties), and replaces the one external dependency - SMTP - with a mock.
- * Fixtures live here so every test describes the same seven-month history.
- */
+
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.NONE)
 public abstract class BaseAiAssistanceTest {
 
@@ -33,6 +30,11 @@ public abstract class BaseAiAssistanceTest {
     protected static final String TARGET_MONTH = "2024-01";
     protected static final String OLDEST_KEPT_MONTH = "2023-08";
     protected static final String OLDEST_TRIMMED_MONTH = "2023-07";
+
+    /**
+     * Stands in for model output wherever a test needs prose but is not testing the model. Two paragraphs.
+     */
+    protected static final String ANALYSIS_TEXT = "Workload is steady.\n\nOvertime is occasional.";
 
     @MockitoBean
     protected JavaMailSender mailSender;
@@ -87,6 +89,28 @@ public abstract class BaseAiAssistanceTest {
 
     protected static UserStatisticAnalysisRequestEvent fullEvent() {
         return eventBuilder().entries(sevenMonthHistory()).build();
+    }
+
+    /**
+     * A context as the consumer builds it: the message and nothing else. Every output field is still unset,
+     * so this is what a test hands to a pipeline step it wants to exercise.
+     */
+    protected static AnalysisContext contextOf(UserStatisticAnalysisRequestEvent event) {
+        return AnalysisContext.builder().event(event).build();
+    }
+
+    /**
+     * A context as it looks once the analysis steps have run - the trimmed window plus the prose - which is
+     * what the notification side reads. Use this instead of re-deriving a window per test.
+     */
+    protected static AnalysisContext analysedContext() {
+        return analysedContext(fullEvent(), sixMonthWindow(), ANALYSIS_TEXT);
+    }
+
+    protected static AnalysisContext analysedContext(UserStatisticAnalysisRequestEvent event,
+                                                     List<UserStatisticHistoryEntryDto> history,
+                                                     String analysis) {
+        return AnalysisContext.builder().event(event).history(history).analysis(analysis).build();
     }
 
     /**

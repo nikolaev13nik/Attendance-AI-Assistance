@@ -1,18 +1,18 @@
 package att.ai.service;
 
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 
+import att.ai.config.AssistanceConfiguration;
+import att.ai.context.AnalysisContext;
 import att.ai.messaging.dto.UserStatisticHistoryEntryDto;
+import lombok.RequiredArgsConstructor;
 
-/**
- * Turns the statistic history carried by a Kafka message into the text handed to the LLM.
- */
 @Component
+@RequiredArgsConstructor
 public class PromptComposer {
 
     private static final String INSTRUCTIONS = """
@@ -32,14 +32,28 @@ public class PromptComposer {
     private static final String ROW_FORMAT = "%-7s  %9s  %11s  %14s  %13s  %9s%n";
     private static final String NOT_RECORDED = "-";
 
-    /** Months of history to include. The producer sends the target month plus 6 earlier ones. */
-    @Value("${att.ai.analysis.history-months:6}")
-    private int historyMonths;
+    private final AssistanceConfiguration configuration;
 
-    /**
-     * @param window the months to show, as returned by {@link #historyWindow(List)}
-     */
-    public String compose(List<UserStatisticHistoryEntryDto> window) {
+    public void applyHistoryWindow(AnalysisContext context) {
+        context.setHistory(window(context.getEvent().getEntries()));
+    }
+
+    public void composePrompt(AnalysisContext context) {
+        context.setPrompt(render(context.getHistory()));
+    }
+
+    private List<UserStatisticHistoryEntryDto> window(List<UserStatisticHistoryEntryDto> entries) {
+        if (entries == null) {
+            return List.of();
+        }
+        return entries.stream()
+            .filter(entry -> Objects.nonNull(entry.getYearMonth()))
+            .sorted(Comparator.comparing(UserStatisticHistoryEntryDto::getYearMonth).reversed())
+            .limit(configuration.getHistoryMonths())
+            .toList();
+    }
+
+    private String render(List<UserStatisticHistoryEntryDto> window) {
         StringBuilder prompt = new StringBuilder(INSTRUCTIONS);
         if (window.isEmpty()) {
             return prompt.append("No monthly statistics were recorded for this employee.").toString();
@@ -56,23 +70,6 @@ public class PromptComposer {
         return prompt.toString();
     }
 
-    /**
-     * The most recent {@code historyMonths} entries, newest first. The incoming list is already ordered and
-     * capped by the producer, but it is re-sorted here so the prompt stays deterministic regardless of how
-     * the message was produced, and entries with no month are dropped as unusable.
-     */
-    public List<UserStatisticHistoryEntryDto> historyWindow(List<UserStatisticHistoryEntryDto> entries) {
-        if (entries == null) {
-            return List.of();
-        }
-        return entries.stream()
-                .filter(entry -> Objects.nonNull(entry.getYearMonth()))
-                .sorted(Comparator.comparing(UserStatisticHistoryEntryDto::getYearMonth).reversed())
-                .limit(historyMonths)
-                .toList();
-    }
-
-    /** Statistic figures are optional in the contract, so a missing one is shown as missing, not as zero. */
     private String number(Number value) {
         return value == null ? NOT_RECORDED : value.toString();
     }
