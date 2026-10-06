@@ -63,14 +63,18 @@ class AnthropicLlmAnalysisClientTest {
         client = new AnthropicLlmAnalysisClient(anthropicClient, configuration);
     }
 
-    private Message message(StopReason stopReason, String... texts) {
+    private Message responseWith(StopReason stopReason) {
         Message response = mock(Message.class);
         Usage usage = mock(Usage.class);
         when(usage.inputTokens()).thenReturn(400L);
         when(usage.outputTokens()).thenReturn(300L);
         when(response.usage()).thenReturn(usage);
         when(response.stopReason()).thenReturn(Optional.ofNullable(stopReason));
+        return response;
+    }
 
+    private Message message(StopReason stopReason, String... texts) {
+        Message response = responseWith(stopReason);
         List<ContentBlock> blocks = Arrays.stream(texts).map(text -> {
             TextBlock textBlock = mock(TextBlock.class);
             when(textBlock.text()).thenReturn(text);
@@ -176,7 +180,7 @@ class AnthropicLlmAnalysisClientTest {
     @Test
     @DisplayName("a refusal goes to the DLQ instead of being retried")
     void analyse_refusalIsRejectedAsPermanentTest() {
-        respondWith(message(StopReason.REFUSAL, "Workload is steady."));
+        respondWith(responseWith(StopReason.REFUSAL));
 
         assertThrows(LlmRequestRejectedException.class, () -> client.analyse(PROMPT),
             "Reason: a refusal is a decision about the request, so the identical request will be "

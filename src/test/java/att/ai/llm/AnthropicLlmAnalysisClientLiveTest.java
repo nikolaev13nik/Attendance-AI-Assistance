@@ -9,6 +9,10 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIfEnvironmentVariable;
 
 import java.time.Duration;
+import java.time.YearMonth;
+import java.time.format.TextStyle;
+import java.util.List;
+import java.util.Locale;
 
 import att.ai.AnalysisFixtures;
 import att.ai.config.AssistanceConfiguration;
@@ -46,6 +50,11 @@ class AnthropicLlmAnalysisClientLiveTest extends AnalysisFixtures {
         return context.getPrompt();
     }
 
+    private static List<String> monthTokens(YearMonth month) {
+        return List.of(month.toString(),
+            month.getMonth().getDisplayName(TextStyle.FULL, Locale.ENGLISH));
+    }
+
     @Test
     @DisplayName("a real call returns prose about the months it was actually shown")
     void analyse_realCallReturnsUsableProseTest() {
@@ -74,17 +83,19 @@ class AnthropicLlmAnalysisClientLiveTest extends AnalysisFixtures {
                 "Reason: proves the real client answered rather than the stub - if this fails, the "
                     + "test is not exercising what it claims to"),
 
-            () -> assertFalse(analysis.contains(OLDEST_TRIMMED_MONTH),
-                "Reason: " + OLDEST_TRIMMED_MONTH + " is trimmed by history-months=6, so it cannot "
-                    + "appear in an honest answer - seeing it means the window was not applied"),
+            () -> assertTrue(monthTokens(YearMonth.parse(OLDEST_TRIMMED_MONTH)).stream()
+                    .noneMatch(analysis::contains),
+                "Reason: " + OLDEST_TRIMMED_MONTH + " is trimmed by history-months=6, so neither it "
+                    + "nor its month name can appear in an honest answer - seeing either means the "
+                    + "window was not applied"),
 
             () -> assertTrue(sixMonthWindow().stream()
                     .map(UserStatisticHistoryEntryDto::getYearMonth)
-                    .map(Object::toString)
+                    .flatMap(month -> monthTokens(month).stream())
                     .anyMatch(analysis::contains),
                 "Reason: at least one in-window month should be named, which shows the table was read "
-                    + "rather than ignored. Deliberately not pinned to one specific month: a good "
-                    + "trend summary may well mention only some of them"),
+                    + "rather than ignored. Both forms count, because the model writes 'August' where "
+                    + "the prompt said '2023-08', and either proves it read the row"),
 
             () -> assertTrue(analysis.length() < MAX_TOKENS,
                 "Reason: a bounded answer shows max-tokens and the brevity instruction are being "
