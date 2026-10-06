@@ -24,13 +24,8 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
-/**
- * Drives the whole service the way a Kafka message would - consume, validate, compose, analyse, email -
- * without a broker, by constructing the consumer with the real beans and handing it a Message.
- */
 @DisplayName("userStatisticAnalysis consumer: turns an analysis request into one email to the requester")
 class StatisticAnalysisConsumerTest extends BaseAiAssistanceTest {
-
     @Autowired
     private Validator validator;
 
@@ -62,7 +57,8 @@ class StatisticAnalysisConsumerTest extends BaseAiAssistanceTest {
         assertTrue(body.contains("<td>2024-01</td>") && body.contains("<td>2023-08</td>"),
                 "Reason: the window's months must be tabled in the body");
         assertTrue(body.contains("Placeholder analysis"),
-                "Reason: the stub LLM client is what currently produces the prose");
+            "Reason: att.ai.llm.provider defaults to 'stub', so the stub produces the prose here - "
+                + "which is what keeps mvn test and CI from spending prepaid credits");
     }
 
     @Test
@@ -89,8 +85,6 @@ class StatisticAnalysisConsumerTest extends BaseAiAssistanceTest {
     @Test
     @DisplayName("a request whose entries field is null is consumed, not NPE'd in the log line")
     void consume_nullEntriesIsConsumedTest() throws Exception {
-        // "entries": null deserialises to a null field, which the pipeline handles as an empty history -
-        // counting it unguarded while logging would DLQ a message nothing can fix by retrying
         consume(eventBuilder().entries(null).build());
 
         ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
@@ -105,8 +99,6 @@ class StatisticAnalysisConsumerTest extends BaseAiAssistanceTest {
         UserStatisticAnalysisRequestEvent malformed = UserStatisticAnalysisRequestEvent.builder()
                 .tenantId(TENANT_ID).reportEmail(REPORT_EMAIL).build();
 
-        // async-messages.yml marks ConstraintViolationException non-retryable, so the binder turns this
-        // into a DLQ routing rather than redelivering forever
         assertThrows(ConstraintViolationException.class, () -> consume(malformed),
                 "Reason: a message without the mandatory userId must be rejected, not silently dropped");
 

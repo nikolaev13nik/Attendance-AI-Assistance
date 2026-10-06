@@ -22,7 +22,7 @@ public class EmailNotificationService {
     private static final Logger log = LoggerFactory.getLogger(EmailNotificationService.class);
 
     private final JavaMailSender mailPublisher;
-    private final EmailContentHandler contentBuilder;
+    private final EmailContentHandler emailContentHandler;
     private final AssistanceConfiguration configuration;
 
     public void execute(AnalysisContext context) {
@@ -50,8 +50,8 @@ public class EmailNotificationService {
             MimeMessageHelper helper = new MimeMessageHelper(message, false, StandardCharsets.UTF_8.name());
             helper.setFrom(configuration.getNotificationFrom());
             helper.setTo(event.getReportEmail());
-            helper.setSubject(contentBuilder.subject(context));
-            helper.setText(contentBuilder.htmlBody(context), true);
+            helper.setSubject(emailContentHandler.subject(context));
+            helper.setText(emailContentHandler.htmlBody(context), true);
         } catch (MessagingException e) {
             throw new EmailDeliveryException("Could not build the analysis email for tenant:%s user:%s"
                     .formatted(event.getTenantId(), event.getUserId()), e);

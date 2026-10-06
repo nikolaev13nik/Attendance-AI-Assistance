@@ -53,6 +53,14 @@ spec:
                   name: aiassistance-config
                   key: ATT_AI_ANALYSIS_HISTORYMONTHS
 
+            {{- range $key := list "ATT_AI_LLM_PROVIDER" "ATT_AI_LLM_MODEL" "ATT_AI_LLM_MAXTOKENS" "ATT_AI_LLM_TIMEOUTSECONDS" "ATT_AI_LLM_MAXRETRIES" }}
+            - name: {{ $key }}
+              valueFrom:
+                configMapKeyRef:
+                  name: aiassistance-config
+                  key: {{ $key }}
+            {{- end }}
+
             {{- range $env, $key := dict "MAIL_HOST" .Values.mail.hostKey "MAIL_FROM" .Values.mail.fromKey "MAIL_USERNAME" .Values.mail.usernameKey "MAIL_PASSWORD" .Values.mail.passwordKey }}
             - name: {{ $env }}
               valueFrom:
@@ -61,6 +69,13 @@ spec:
                   key: {{ $key }}
                   optional: true
             {{- end }}
+
+            - name: ANTHROPIC_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Values.secret.name }}
+                  key: {{ .Values.llm.apiKeyKey }}
+                  optional: false
 
           resources:
             {{- toYaml .Values.resources | nindent 12 }}

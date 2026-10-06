@@ -15,35 +15,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Pins that the env vars helm/aiassistance sets actually reach the @Value placeholders on
- * AssistanceConfiguration - a silent miss here would leave a chart value looking configured while the
- * service kept its default.
- * <p>
- * Two independent mechanisms resolve an env var for a @Value placeholder, and the chart relies on the
- * second: SystemEnvironmentPropertySource maps separators, which matches HISTORY_MONTHS, and Boot's
- * ConfigurationPropertySourcesPropertySource - attached to the environment by
- * SpringApplication.prepareEnvironment, and by this test's runner - additionally applies relaxed binding,
- * which drops the dash and so matches HISTORYMONTHS. Both names work; the chart uses the latter.
- */
 @DisplayName("AssistanceConfiguration: resolves the @Value placeholders from the Helm env vars")
 class AssistanceConfigurationTest {
-
-    /**
-     * Exactly what helm/aiassistance/templates/configmap.yaml emits.
-     */
     private static final String CHART_ENV_VAR = "ATT_AI_ANALYSIS_HISTORYMONTHS";
 
-    /**
-     * The separator-mapped spelling, which resolves through the plain property source.
-     */
     private static final String UNDERSCORED_ENV_VAR = "ATT_AI_ANALYSIS_HISTORY_MONTHS";
 
     private static final String SENDER_ENV_VAR = "ATT_AI_NOTIFICATION_FROM";
 
-    /**
-     * A context whose 'systemEnvironment' source carries the given variables, as a deployed pod's would.
-     */
     private ApplicationContextRunner runnerWithEnv(Map<String, Object> environmentVariables) {
         return new ApplicationContextRunner()
             .withInitializer(context -> context.getEnvironment().getPropertySources()
@@ -54,9 +33,6 @@ class AssistanceConfigurationTest {
             .withUserConfiguration(AssistanceConfiguration.class);
     }
 
-    /**
-     * The sender has no default, so every context needs it before anything else can be asserted.
-     */
     private Map<String, Object> envWithSender(String... nameValuePairs) {
         Map<String, Object> environment = new HashMap<>();
         environment.put(SENDER_ENV_VAR, "no-reply@attendance.test");
@@ -98,6 +74,45 @@ class AssistanceConfigurationTest {
                 "Reason: 6 months is the documented default when the chart sets nothing");
             assertTrue(configuration.isNotificationEnabled(),
                 "Reason: notifications are on unless MAIL_ENABLED says otherwise");
+            assertEquals("stub", configuration.getLlmProvider(),
+                "Reason: the free client must be the default everywhere, so that forgetting to set "
+                    + "the provider can never start spending credits");
+            assertEquals("claude-sonnet-5", configuration.getLlmModel(),
+                "Reason: the model id is a default, not a required setting, so a chart that sets "
+                    + "nothing still produces a valid request");
+            assertEquals(4000L, configuration.getLlmMaxTokens(),
+                "Reason: the per-call spend ceiling must exist without the chart configuring it");
+            assertEquals(40, configuration.getLlmTimeoutSeconds(),
+                "Reason: an unset timeout would fall back to the SDK's 10 minutes, which is what "
+                    + "turns a hung call into a Kafka rebalance loop");
+            assertEquals(1, configuration.getLlmMaxRetries(),
+                "Reason: 1 SDK retry is the bounded default the async-messages.yml arithmetic assumes");
+        });
+    }
+
+    @Test
+    @DisplayName("the chart's own env var names reach every att.ai.llm placeholder")
+    void llmSettings_bindFromTheChartEnvVarsTest() {
+        runnerWithEnv(envWithSender(
+            "ATT_AI_LLM_PROVIDER", "anthropic",
+            "ATT_AI_LLM_MODEL", "claude-haiku-4-5",
+            "ATT_AI_LLM_MAXTOKENS", "1234",
+            "ATT_AI_LLM_TIMEOUTSECONDS", "15",
+            "ATT_AI_LLM_MAXRETRIES", "0")).run(context -> {
+            AssistanceConfiguration configuration = context.getBean(AssistanceConfiguration.class);
+            assertEquals("anthropic", configuration.getLlmProvider(),
+                "Reason: this is the dash-dropped spelling the ConfigMap emits, and it is the only "
+                    + "thing that switches the service onto the paid client");
+            assertEquals("claude-haiku-4-5", configuration.getLlmModel(),
+                "Reason: changing the model must be a chart value, not a code change");
+            assertEquals(1234L, configuration.getLlmMaxTokens(),
+                "Reason: the spend ceiling has to be tunable per environment without a rebuild");
+            assertEquals(15, configuration.getLlmTimeoutSeconds(),
+                "Reason: the timeout feeds the max.poll.interval.ms arithmetic, so an operator "
+                    + "must be able to lower it from the chart");
+            assertEquals(0, configuration.getLlmMaxRetries(),
+                "Reason: 0 is a meaningful value - one HTTP attempt only - so it must survive "
+                    + "binding rather than being treated as unset");
         });
     }
 

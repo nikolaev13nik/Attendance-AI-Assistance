@@ -3,6 +3,6 @@ name: aiassistance
 description: AI assistance service. Consumes month-statistic analysis requests from Kafka and emails the analysis to the requester.
 type: application
 
-version: 0.2.0
+version: 0.3.0
 
 appVersion: "1.0.1"

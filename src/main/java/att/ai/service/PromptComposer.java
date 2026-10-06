@@ -21,7 +21,6 @@ public class PromptComposer {
             direction, whether overtime is occasional or sustained, and whether absence is clustered or
             spread out. Mention only what the numbers support, and say so when the history is too short to
             draw a conclusion. Do not invent months that are not listed.
-
             """;
 
     private static final String TABLE_HEADER = """

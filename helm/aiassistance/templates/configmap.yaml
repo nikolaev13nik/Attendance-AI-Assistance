@@ -10,3 +10,9 @@ data:
   MAIL_ENABLED: {{ .Values.mail.enabled | quote }}
 
   ATT_AI_ANALYSIS_HISTORYMONTHS: {{ .Values.analysis.historyMonths | quote }}
+
+  ATT_AI_LLM_PROVIDER: {{ .Values.llm.provider | quote }}
+  ATT_AI_LLM_MODEL: {{ .Values.llm.model | quote }}
+  ATT_AI_LLM_MAXTOKENS: {{ .Values.llm.maxTokens | quote }}
+  ATT_AI_LLM_TIMEOUTSECONDS: {{ .Values.llm.timeoutSeconds | quote }}
+  ATT_AI_LLM_MAXRETRIES: {{ .Values.llm.maxRetries | quote }}

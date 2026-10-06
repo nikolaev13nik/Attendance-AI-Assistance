@@ -22,7 +22,6 @@ import static org.mockito.Mockito.verify;
 
 @DisplayName("StatisticAnalysisService: runs every step of the pipeline over one context")
 class StatisticAnalysisServiceTest extends BaseAiAssistanceTest {
-
     @Autowired
     private StatisticAnalysisService statisticAnalysisService;
 
@@ -47,7 +46,9 @@ class StatisticAnalysisServiceTest extends BaseAiAssistanceTest {
             "Reason: the prompt is built from this context's window, not from a second derivation");
 
         assertTrue(context.getAnalysis().contains("Placeholder analysis"),
-            "Reason: step three parks the model's answer on the context - the stub client's, for now");
+            "Reason: step three parks the model's answer on the context. It is the stub's answer "
+                + "because att.ai.llm.provider defaults to 'stub', which is what keeps the suite free "
+                + "- see LlmAnalysisClientSelectionTest");
 
         verify(mailSender, times(1)).send(any(MimeMessage.class));
     }

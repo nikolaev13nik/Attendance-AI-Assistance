@@ -1,58 +1,37 @@
-# Kafka wiring for this service. Kept out of application.properties and pulled in via
-# spring.config.import, so all messaging config sits in one file (same split as TimeTracking).
 spring:
   cloud:
     function:
-      # Spring Cloud Function scans for Supplier/Function/Consumer beans. Listing the bean name here
-      # removes the guessing: exactly this one function is exposed, and a second bean added later
-      # will NOT silently become a subscriber until it is named here too.
       definition: userStatisticAnalysis
 
     stream:
       bindings:
-        # Binding names are structural, not free text: "<function bean name>-in-<index>".
-        # Bean userStatisticAnalysis + input 0 => userStatisticAnalysis-in-0. Rename the bean and
-        # this key must change with it, or the function is never bound to anything.
         userStatisticAnalysis-in-0:
-          # The topic TimeTracking publishes its enriched analysis requests to.
           destination: att.user-statistic-ai-analysis
 
-          # The Kafka consumer group. This is load-bearing in three ways:
-          #  - offsets are committed per group, so a restart resumes where it stopped instead of
-          #    replaying or skipping;
-          #  - running two replicas of this service shares the partitions between them rather than
-          #    both emailing the same user twice;
-          #  - without a group the binding is anonymous, which disables the DLQ/retry machinery below.
           group: att-ai-assistance
 
-          # TimeTracking produces JSON (its producer bindings declare the same content type), so the
-          # binder deserializes straight into UserStatisticAnalysisRequestEvent.
           content-type: application/json
+
+          consumer:
+            max-attempts: 2
+            back-off-initial-interval: 2000
+            back-off-max-interval: 2000
+            back-off-multiplier: 1.0
+
+            retryable-exceptions:
+              jakarta.validation.ConstraintViolationException: false
+              att.ai.llm.LlmRequestRejectedException: false
 
       kafka:
         binder:
-          # Overridden per environment: kafka:9092 in Compose/Kubernetes, localhost:9092 bare.
           brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
-          # Single-broker dev cluster cannot replicate, so 1 is the only value that works. Raise it
-          # alongside the broker count in a real cluster.
           replication-factor: 1
 
-          # TimeTracking creates this topic with 6 partitions. Matching the number means that if this
-          # service happens to start first and auto-create the topic, it creates the same shape
-          # instead of a 1-partition topic the producer then cannot spread across.
           min-partition-count: 6
 
         bindings:
           userStatisticAnalysis-in-0:
             consumer:
-              # After the retries are exhausted the message is moved aside instead of blocking the
-              # partition. Without this, one bad message stalls every later message behind it.
               enableDlq: true
               dlqName: att.user-statistic-ai-analysis.dlq
-
-              # A message that fails validation is broken, not unlucky: retrying it cannot help, so it
-              # goes to the DLQ immediately. Transient failures (SMTP down, LLM timeout) are NOT listed
-              # here, so they keep the default retry behaviour.
-              retryable-exceptions:
-                jakarta.validation.ConstraintViolationException: false

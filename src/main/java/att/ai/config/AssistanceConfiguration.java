@@ -10,7 +10,6 @@ import lombok.Setter;
 @Getter
 @Setter
 public class AssistanceConfiguration {
-
     @Value("${att.ai.analysis.history-months:6}")
     private int historyMonths;
 
@@ -19,4 +18,19 @@ public class AssistanceConfiguration {
 
     @Value("${att.ai.notification.enabled:true}")
     private boolean notificationEnabled;
+
+    @Value("${att.ai.llm.provider:stub}")
+    private String llmProvider;
+
+    @Value("${att.ai.llm.model:claude-sonnet-5}")
+    private String llmModel;
+
+    @Value("${att.ai.llm.max-tokens:4000}")
+    private long llmMaxTokens;
+
+    @Value("${att.ai.llm.timeout-seconds:40}")
+    private int llmTimeoutSeconds;
+
+    @Value("${att.ai.llm.max-retries:1}")
+    private int llmMaxRetries;
 }

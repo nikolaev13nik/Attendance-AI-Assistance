@@ -27,7 +27,15 @@ mail:
   passwordKey: MAIL_PASSWORD
 
 analysis:
-  historyMonths: "6"
+  historyMonths: "7"
+
+llm:
+  provider: "anthropic"
+  model: "claude-sonnet-5"
+  maxTokens: "4000"
+  timeoutSeconds: "40"
+  maxRetries: "1"
+  apiKeyKey: ANTHROPIC_API_KEY
 
 javaToolOptions: "-XX:MaxRAMPercentage=75"
 
