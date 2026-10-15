@@ -24,15 +24,50 @@ class EmailContentHandlerTest extends BaseAiAssistanceTest {
     void subject_namesUserAndPeriodTest() {
         // subject() reads the ends of the window, which is newest-first - so this also pins that the context
         // carries an already-ordered window rather than the raw entries off the event
-        assertEquals("Work-time analysis for user 7 (2023-08 - 2024-01)",
+        assertEquals("Work-time analysis for Anna Smith (2023-08 - 2024-01)",
                 contentBuilder.subject(analysedContext()));
     }
 
     @Test
     @DisplayName("with no history the subject drops the period instead of printing an empty range")
     void subject_withoutHistoryOmitsPeriodTest() {
-        assertEquals("Work-time analysis for user 7",
+        assertEquals("Work-time analysis for Anna Smith",
                 contentBuilder.subject(analysedContext(fullEvent(), List.of(), ANALYSIS_TEXT)));
+    }
+
+    @Test
+    @DisplayName("an unresolved name falls back to the user id instead of printing null")
+    void subject_withoutUserNameFallsBackToIdTest() {
+        UserStatisticAnalysisRequestEvent unnamed = eventBuilder().userName(null)
+                .entries(sevenMonthHistory()).build();
+        UserStatisticAnalysisRequestEvent blankNamed = eventBuilder().userName("  ")
+                .entries(sevenMonthHistory()).build();
+
+        assertEquals("Work-time analysis for user 7 (2023-08 - 2024-01)",
+                contentBuilder.subject(analysedContext(unnamed, sixMonthWindow(), ANALYSIS_TEXT)),
+                "Reason: the name is optional in the event contract - TimeTracking skips it when Accounting "
+                        + "cannot resolve the user, and the id must carry the subject then");
+        assertEquals("Work-time analysis for user 7 (2023-08 - 2024-01)",
+                contentBuilder.subject(analysedContext(blankNamed, sixMonthWindow(), ANALYSIS_TEXT)),
+                "Reason: a blank name is as unusable as a missing one");
+        assertTrue(contentBuilder.htmlBody(analysedContext(unnamed, sixMonthWindow(), ANALYSIS_TEXT))
+                        .contains("for <strong>user 7</strong>"),
+                "Reason: the body falls back to the same id as the subject");
+    }
+
+    @Test
+    @DisplayName("the body names the analysed user and escapes that name")
+    void htmlBody_namesAnalysedUserEscapedTest() {
+        assertTrue(contentBuilder.htmlBody(analysedContext()).contains("for <strong>Anna Smith</strong>"),
+                "Reason: the requester asked about an employee, so the body must say which one by name");
+
+        UserStatisticAnalysisRequestEvent injected = eventBuilder().userName("<script>alert(1)</script>")
+                .entries(sevenMonthHistory()).build();
+        String body = contentBuilder.htmlBody(analysedContext(injected, sixMonthWindow(), ANALYSIS_TEXT));
+
+        assertTrue(body.contains("&lt;script&gt;"),
+                "Reason: the name arrives from another service and is untrusted inside HTML");
+        assertFalse(body.contains("<script>"), "Reason: the raw tag must not survive into the body");
     }
 
     @Test

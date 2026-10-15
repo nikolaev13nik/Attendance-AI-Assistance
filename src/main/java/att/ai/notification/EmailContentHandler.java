@@ -16,11 +16,11 @@ public class EmailContentHandler {
 
     public String subject(AnalysisContext context) {
         List<UserStatisticHistoryEntryDto> history = context.getHistory();
-        Integer userId = context.getEvent().getUserId();
+        String analysedUser = analysedUser(context.getEvent());
         if (history.isEmpty()) {
-            return "Work-time analysis for user %d".formatted(userId);
+            return "Work-time analysis for %s".formatted(analysedUser);
         }
-        return "Work-time analysis for user %d (%s - %s)".formatted(userId,
+        return "Work-time analysis for %s (%s - %s)".formatted(analysedUser,
                 history.get(history.size() - 1).getYearMonth(), history.get(0).getYearMonth());
     }
 
@@ -31,15 +31,22 @@ public class EmailContentHandler {
                 <body style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:14px;\
                 line-height:1.5;color:#1a1a1a;">
                   <p>%s</p>
-                  <p>Here is the work-time analysis you requested for user <strong>%d</strong>.</p>
+              <p>Here is the work-time analysis you requested for <strong>%s</strong>.</p>
                   %s
                   %s
                   <p style="color:#6b6b6b;font-size:12px;">Generated automatically by Attendance AI Assistance.
                   Please do not reply to this message.</p>
                 </body>
                 </html>"""
-            .formatted(greeting(context.getEvent()), context.getEvent().getUserId(),
+            .formatted(greeting(context.getEvent()), HtmlUtils.htmlEscape(analysedUser(context.getEvent())),
                 paragraphs(context.getAnalysis()), historyTable(context.getHistory()));
+    }
+
+    private String analysedUser(UserStatisticAnalysisRequestEvent event) {
+        String userName = event.getUserName();
+        return userName == null || userName.isBlank()
+            ? "user %d".formatted(event.getUserId())
+            : userName.strip();
     }
 
     private String greeting(UserStatisticAnalysisRequestEvent event) {

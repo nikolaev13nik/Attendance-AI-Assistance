@@ -49,7 +49,7 @@ class StatisticAnalysisConsumerTest extends BaseAiAssistanceTest {
         verify(mailSender).send(captor.capture());
         MimeMessage sent = captor.getValue();
 
-        assertEquals("Work-time analysis for user 7 (2023-08 - 2024-01)", sent.getSubject(),
+        assertEquals("Work-time analysis for Anna Smith (2023-08 - 2024-01)", sent.getSubject(),
                 "Reason: the period comes from the trimmed window, not from the raw 7 entries sent");
         String body = bodyOf(sent);
         assertTrue(body.contains("Hello John Doe,"),
@@ -76,7 +76,7 @@ class StatisticAnalysisConsumerTest extends BaseAiAssistanceTest {
 
         ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
         verify(mailSender).send(captor.capture());
-        assertEquals("Work-time analysis for user 7", captor.getValue().getSubject(),
+        assertEquals("Work-time analysis for Anna Smith", captor.getValue().getSubject(),
                 "Reason: with no months there is no period to name");
         assertTrue(bodyOf(captor.getValue()).contains("No monthly statistics were recorded"),
                 "Reason: the requester asked for a report and deserves an answer, even an empty one");
@@ -89,7 +89,7 @@ class StatisticAnalysisConsumerTest extends BaseAiAssistanceTest {
 
         ArgumentCaptor<MimeMessage> captor = ArgumentCaptor.forClass(MimeMessage.class);
         verify(mailSender).send(captor.capture());
-        assertEquals("Work-time analysis for user 7", captor.getValue().getSubject(),
+        assertEquals("Work-time analysis for Anna Smith", captor.getValue().getSubject(),
                 "Reason: a null history is an empty one, so the requester still gets an answer");
     }
 

@@ -36,6 +36,13 @@ definitions:
         format: int32
         description: Unique identifier of the user
         example: 42
+      userName:
+        type: string
+        description: First and last name of the user the statistics belong to, resolved from
+          Attendance-Accounting while the statistics are computed. Optional on purpose - messages produced
+          before this field existed, and users whose lookup could not be resolved, carry no name, and the
+          recipient falls back to the user id.
+        example: Anna Smith
 
   StatisticSnapshot:
     type: object

@@ -21,8 +21,10 @@ What this service deliberately does **not** have, and must not grow without a de
 - **No Spring Security.** With no API to protect there is nothing to authenticate. Do not add a resource
   server here; JWT validation belongs to the services that serve requests.
 - **No outbound HTTP client.** It does not call Accounting or TimeTracking. If you find yourself needing
-  a user's name or email, note that TimeTracking already resolves the requester and puts it on the
-  message — extend the event contract rather than adding a client.
+  a user's name or email, note that TimeTracking already resolves both the requester and the reported
+  employee against Accounting and puts them on the message (`reportEmail`, `reportUserName`,
+  `reportUserLastName`, `userName`) — extend the event contract rather than adding a client, which is how
+  `userName` got here.
 
 ## Commands
 
@@ -81,7 +83,7 @@ att.user-statistic-ai-analysis
         2. PromptComposer.composePrompt        renders the window placed by step 1
         3. LlmAnalysisClient.analyse           StubLlmAnalysisClient returns a fixed string for now
         4. EmailNotificationService.notifyRequester   MimeMessage to event.reportEmail
-             -> EmailContentBuilder            subject + HTML body
+             -> EmailContentBuilder            subject + HTML body, naming event.userName or the userId
 ```
 
 ### `AnalysisContext`: one mutable object, `void` steps
@@ -275,10 +277,11 @@ belongs.
 - **No real LLM.** `StubLlmAnalysisClient` returns a hard-coded string. When adding a real client, gate the
   two on a property rather than deleting the stub: it is what keeps the pipeline testable without calling
   a paid API.
-- **The analysed employee's name is not available.** The event carries the *requester's* name and email
-  (`reportUserName`, `reportUserLastName`, `reportEmail`) but only the analysed user's `userId`, so the
-  email subject reads "user 7". Putting a name there needs a new field on the event contract, set by
-  TimeTracking.
+- **The analysed employee's name can be missing.** `userName` carries their first and last name, but it is
+  optional: TimeTracking skips it when the Accounting lookup fails rather than failing the whole report, and
+  messages produced before the field existed have none. `EmailContentHandler.analysedUser` therefore falls
+  back to "user 7" — never treat the field as guaranteed. The *requester* is a separate person, named by
+  `reportUserName` / `reportUserLastName`, and is who the greeting and the recipient address come from.
 - **`history-months` defaults to 6 while the producer sends 7** (target month + 6 before it), so the
   oldest entry is dropped. Set `analysis.historyMonths: "7"` in `helm/aiassistance/values.yaml` (or
   `ATT_AI_ANALYSIS_HISTORYMONTHS=7` locally) to use everything sent.

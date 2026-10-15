@@ -11,6 +11,7 @@ import jakarta.mail.internet.MimeMessage;
 public abstract class AnalysisFixtures {
     protected static final Integer TENANT_ID = 2;
     protected static final Integer USER_ID = 7;
+    protected static final String USER_NAME = "Anna Smith";
     protected static final String REPORT_FIRST_NAME = "John";
     protected static final String REPORT_LAST_NAME = "Doe";
     protected static final String REPORT_EMAIL = "john.doe@example.com";
@@ -56,6 +57,7 @@ public abstract class AnalysisFixtures {
         return UserStatisticAnalysisRequestEvent.builder()
             .tenantId(TENANT_ID)
             .userId(USER_ID)
+            .userName(USER_NAME)
             .reportUserName(REPORT_FIRST_NAME)
             .reportUserLastName(REPORT_LAST_NAME)
             .reportEmail(REPORT_EMAIL);

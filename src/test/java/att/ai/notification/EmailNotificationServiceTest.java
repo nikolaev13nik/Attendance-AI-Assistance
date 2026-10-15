@@ -47,7 +47,7 @@ class EmailNotificationServiceTest extends BaseAiAssistanceTest {
         assertEquals(REPORT_EMAIL, sent.getRecipients(RecipientType.TO)[0].toString(),
                 "Reason: the recipient is the address TimeTracking resolved from Accounting");
         assertEquals(FROM_ADDRESS, sent.getFrom()[0].toString());
-        assertEquals("Work-time analysis for user 7 (2023-08 - 2024-01)", sent.getSubject());
+        assertEquals("Work-time analysis for Anna Smith (2023-08 - 2024-01)", sent.getSubject());
         // MimeMessage writes its MIME headers in saveChanges(), which the real Transport.send performs and
         // the mocked sender does not - so the header is materialised here before being asserted on
         sent.saveChanges();
