@@ -124,3 +124,20 @@ jobs:
           git tag "${{ steps.version.outputs.version }}"
 
           git push origin "${{ steps.version.outputs.version }}"
+
+      - name: Bump appVersion for Argo CD
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        run: |
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          sed -i "s|^appVersion:.*|appVersion: \"${{ steps.version.outputs.version }}\"|" \
+            helm/aiassistance/Chart.yaml
+
+          git add helm/aiassistance/Chart.yaml
+
+          git diff --cached --quiet || {
+            git commit -m "ci: deploy ${{ steps.version.outputs.version }}"
+            git push origin HEAD:main
+          }
