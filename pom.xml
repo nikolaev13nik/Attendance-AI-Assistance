@@ -24,6 +24,7 @@
         <anthropic.version>2.34.0</anthropic.version>
 
         <excluded.test.groups>llm</excluded.test.groups>
+		<attendance-common-lib.version>0.1.1</attendance-common-lib.version>
 	</properties>
 
 	<dependencyManagement>
@@ -91,7 +92,20 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>co.il.attendance</groupId>
+			<artifactId>attendance-common-lib</artifactId>
+			<version>${attendance-common-lib.version}</version>
+		</dependency>
 	</dependencies>
+
+	<repositories>
+		<repository>
+			<id>github</id>
+			<name>GitHub Packages</name>
+			<url>https://maven.pkg.github.com/nikolaev13nik/attendance-common-lib</url>
+		</repository>
+	</repositories>
 
 	<build>
 		<plugins>

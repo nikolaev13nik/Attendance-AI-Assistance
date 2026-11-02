@@ -12,10 +12,15 @@ import java.util.function.Consumer;
 import att.ai.context.AnalysisContext;
 import att.ai.messaging.dto.UserStatisticAnalysisRequestEvent;
 import att.ai.service.StatisticAnalysisService;
+import co.il.attendance.logging.LogContextScope;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validator;
 import lombok.RequiredArgsConstructor;
+
+import static co.il.attendance.logging.LogContext.TARGET_USER_ID;
+import static co.il.attendance.logging.LogContext.TENANT_ID;
+import static org.apache.commons.lang3.BooleanUtils.isFalse;
 
 @Configuration
 @RequiredArgsConstructor
@@ -33,12 +38,15 @@ public class StatisticAnalysisConsumer {
 
     private void userStatisticAnalysisHandler(Message<UserStatisticAnalysisRequestEvent> message) {
         UserStatisticAnalysisRequestEvent event = message.getPayload();
-        validate(event);
-        log.info("Received analysis request for tenant:{} user:{} with {} month(s) of history, requested by {} {} <{}>",
-            event.getTenantId(), event.getUserId(), entryCount(event),
-                event.getReportUserName(), event.getReportUserLastName(), event.getReportEmail());
+        try (LogContextScope ignored = LogContextScope.open()
+                .with(TENANT_ID, event.getTenantId())
+                .with(TARGET_USER_ID, event.getUserId())) {
+            validate(event);
+            log.info("Received analysis request for tenant:{} user:{} with {} month(s) of history, recipient present={}",
+                    event.getTenantId(), event.getUserId(), entryCount(event), hasRecipient(event));
 
-        statisticAnalysisService.execute(AnalysisContext.builder().event(event).build());
+            statisticAnalysisService.execute(AnalysisContext.builder().event(event).build());
+        }
     }
 
     private void validate(UserStatisticAnalysisRequestEvent event) {
@@ -46,6 +54,10 @@ public class StatisticAnalysisConsumer {
         if (!violations.isEmpty()) {
             throw new ConstraintViolationException(violations);
         }
+    }
+
+    private boolean hasRecipient(UserStatisticAnalysisRequestEvent event) {
+        return event.getReportEmail() != null && isFalse(event.getReportEmail().isBlank());
     }
 
     private int entryCount(UserStatisticAnalysisRequestEvent event) {

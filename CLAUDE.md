@@ -136,6 +136,22 @@ that flag was never set in `helm/`, so it only ever served the test context — 
 for what keeps tests broker-free now. Consuming is this service's whole purpose; whether an analysis
 happens at all is controlled upstream, by the `report` flag on TimeTracking's statistics request.
 
+### Logging and tracing
+
+The shared `../attendance-common-lib` (`co.il.attendance:attendance-common-lib`, GitHub Packages; bump
+`attendance-common-lib.version` to take a release) is a dependency here for its logging part only. This
+service has no Spring Security, so the library's security beans and its request filter stay off; what it
+brings is Micrometer Tracing, which puts `traceId` into the MDC. `enable-observation: true` on the Kafka
+binder (`async-messages.yml`) continues the trace TimeTracking put on the record, so one report keeps one
+`traceId` from the HTTP request in TimeTracking to the email sent here. `StatisticAnalysisConsumer` puts the
+event's `tenantId` and `userId` (as `targetUserId`) into the MDC with `LogContextScope`, so every line
+written while handling a message carries them, and removes them afterwards. Locally logs are text
+(`logging.pattern.correlation` in `application.properties`); the Helm chart sets
+`LOGGING_STRUCTURED_FORMAT_CONSOLE` (`logFormat` in `values.yaml`, `logstash`) and renames `level` to
+`severity` for GKE. Building needs a GitHub token with `read:packages` under server id `github` in
+`~/.m2/settings.xml`; CI uses its `GITHUB_TOKEN`, and `Dockerfile.dev` gets the settings file as the BuildKit
+secret `maven_settings`.
+
 ### Failure handling, which differs by cause on purpose
 
 | Cause                                      | Behaviour                                                                    | Reasoning                                                                                               |

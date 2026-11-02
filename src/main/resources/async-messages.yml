@@ -26,6 +26,8 @@ spring:
         binder:
           brokers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
+          enable-observation: true
+
           replication-factor: 1
 
           min-partition-count: 6

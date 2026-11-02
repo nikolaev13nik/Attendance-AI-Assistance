@@ -32,6 +32,10 @@ spec:
           env:
             - name: JAVA_TOOL_OPTIONS
               value: {{ .Values.javaToolOptions | quote }}
+            - name: LOGGING_STRUCTURED_FORMAT_CONSOLE
+              value: {{ .Values.logFormat | quote }}
+            - name: LOGGING_STRUCTURED_JSON_RENAME_LEVEL
+              value: severity
 
             - name: KAFKA_BOOTSTRAP_SERVERS
               valueFrom:

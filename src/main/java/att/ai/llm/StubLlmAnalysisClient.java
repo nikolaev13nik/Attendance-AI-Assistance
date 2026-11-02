@@ -25,7 +25,7 @@ public class StubLlmAnalysisClient implements LlmAnalysisClient {
 
     @Override
     public String analyse(String prompt) {
-        log.info("LLM prompt that would be sent:\n{}", prompt);
+        log.debug("LLM prompt that would be sent:\n{}", prompt);
         return STUB_ANALYSIS;
     }
 }

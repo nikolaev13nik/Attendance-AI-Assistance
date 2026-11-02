@@ -39,8 +39,7 @@ public class EmailNotificationService {
         }
 
         mailPublisher.send(buildMessage(context));
-        log.info("Analysis for tenant :{} user:{} sent to {}",
-                event.getTenantId(), event.getUserId(), event.getReportEmail());
+        log.info("Analysis for tenant:{} user:{} emailed", event.getTenantId(), event.getUserId());
     }
 
     private MimeMessage buildMessage(AnalysisContext context) {

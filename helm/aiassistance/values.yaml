@@ -39,6 +39,8 @@ llm:
 
 javaToolOptions: "-XX:MaxRAMPercentage=75"
 
+logFormat: logstash
+
 resources:
   requests:
     memory: 256Mi
