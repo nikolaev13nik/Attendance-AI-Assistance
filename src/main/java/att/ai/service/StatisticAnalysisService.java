@@ -7,6 +7,8 @@ import att.ai.llm.LlmAnalysisClient;
 import att.ai.notification.EmailNotificationService;
 import lombok.RequiredArgsConstructor;
 
+import static org.apache.commons.lang3.BooleanUtils.isFalse;
+
 @Service
 @RequiredArgsConstructor
 public class StatisticAnalysisService {
@@ -16,6 +18,9 @@ public class StatisticAnalysisService {
     private final EmailNotificationService emailNotificationService;
 
     public void execute(AnalysisContext context) {
+        if (isFalse(emailNotificationService.canDeliver(context))) {
+            return;
+        }
         promptComposer.applyHistoryWindow(context);
         promptComposer.composePrompt(context);
         requestAnalysis(context);

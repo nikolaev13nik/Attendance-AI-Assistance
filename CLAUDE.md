@@ -79,6 +79,7 @@ future re-sync into a manual merge.
 att.user-statistic-ai-analysis
   -> StatisticAnalysisConsumer        validate (jakarta Validator), build the context, trigger
      -> StatisticAnalysisService      the pipeline: every main step is called from here, in order
+        0. EmailNotificationService.canDeliver mail disabled or no reportEmail -> stop before the paid model call
         1. PromptComposer.applyHistoryWindow   sorts newest-first, trims to att.ai.analysis.history-months
         2. PromptComposer.composePrompt        renders the window placed by step 1
         3. LlmAnalysisClient.analyse           stub by default, AnthropicLlmAnalysisClient when provider=anthropic
@@ -157,7 +158,7 @@ secret `maven_settings`.
 | Cause                                      | Behaviour                                                                    | Reasoning                                                                                               |
 |--------------------------------------------|------------------------------------------------------------------------------|---------------------------------------------------------------------------------------------------------|
 | Malformed payload (no `userId`/`tenantId`) | `ConstraintViolationException` → straight to DLQ                             | Marked non-retryable in `async-messages.yml`: retrying a broken message cannot help                     |
-| Blank or missing `reportEmail`             | warn, skip, acknowledge                                                      | Incomplete *data*, not a malformed message. Throwing would DLQ it and alert on something no retry fixes |
+| Blank or missing `reportEmail`             | warn, skip before the model call, acknowledge                                | Incomplete *data*, not a malformed message. Throwing would DLQ it and alert on something no retry fixes |
 | SMTP down, auth failure, build failure     | `EmailDeliveryException` / `MailAuthenticationException` → retried, then DLQ | Transient. Deliberately **not** in the non-retryable list                                               |
 
 That last row has an operational consequence worth knowing: a revoked or rotated Gmail app password

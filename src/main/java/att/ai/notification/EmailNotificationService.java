@@ -27,19 +27,23 @@ public class EmailNotificationService {
     private final EmailContentHandler emailContentHandler;
     private final AssistanceConfiguration configuration;
 
-    public void execute(AnalysisContext context) {
+    public boolean canDeliver(AnalysisContext context) {
         UserStatisticAnalysisRequestEvent event = context.getEvent();
         if (isFalse(configuration.isNotificationEnabled())) {
-            log.info("Mail disabled, not sending the analysis for tenant:{} user:{}",
+            log.info("Mail disabled, no analysis requested for tenant:{} user:{}",
                     event.getTenantId(), event.getUserId());
-            return;
+            return false;
         }
         if (event.getReportEmail() == null || event.getReportEmail().isBlank()) {
-            log.warn("No reportEmail on the analysis request for tenant:{} user:{}, nothing to notify",
+            log.warn("No reportEmail on the analysis request for tenant:{} user:{}, no analysis requested",
                     event.getTenantId(), event.getUserId());
-            return;
+            return false;
         }
+        return true;
+    }
 
+    public void execute(AnalysisContext context) {
+        UserStatisticAnalysisRequestEvent event = context.getEvent();
         mailPublisher.send(buildMessage(context));
         log.info("Analysis for tenant:{} user:{} emailed", event.getTenantId(), event.getUserId());
     }

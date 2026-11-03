@@ -13,7 +13,7 @@ import att.ai.messaging.dto.UserStatisticHistoryEntryDto;
 import jakarta.mail.internet.MimeMessage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
@@ -54,14 +54,14 @@ class StatisticAnalysisServiceTest extends BaseAiAssistanceTest {
     }
 
     @Test
-    @DisplayName("the service drives the email step itself, so a context with no recipient sends nothing")
-    void execute_withoutRecipientCompletesWithoutSendingTest() {
+    @DisplayName("a context with no recipient stops before the model is asked, and sends nothing")
+    void execute_withoutRecipientSkipsTheModelTest() {
         AnalysisContext context = contextOf(eventBuilder().reportEmail(null).entries(sevenMonthHistory()).build());
 
         statisticAnalysisService.execute(context);
 
-        assertFalse(context.getAnalysis().isBlank(),
-            "Reason: the analysis still runs - only the delivery is skipped");
+        assertNull(context.getAnalysis(),
+            "Reason: the paid model call is skipped when nobody can receive the analysis");
         verify(mailSender, never()).send(any(MimeMessage.class));
     }
 }

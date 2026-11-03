@@ -14,6 +14,7 @@ import jakarta.mail.Message.RecipientType;
 import jakarta.mail.internet.MimeMessage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -57,35 +58,33 @@ class EmailNotificationServiceTest extends BaseAiAssistanceTest {
     }
 
     @Test
-    @DisplayName("no recipient on the event - nothing is sent and nothing is thrown")
-    void execute_blankReportEmailSkipsSendingTest() {
+    @DisplayName("no recipient on the event - the analysis cannot be delivered, and nothing is thrown")
+    void canDeliver_blankReportEmailIsFalseTest() {
         UserStatisticAnalysisRequestEvent noRecipient = UserStatisticAnalysisRequestEvent.builder()
                 .tenantId(TENANT_ID).userId(USER_ID).reportEmail("  ").entries(sevenMonthHistory()).build();
 
-        emailNotificationService.execute(analysedContext(noRecipient, sixMonthWindow(), ANALYSIS_TEXT));
-
         // throwing here would push the message to the DLQ, alerting on something no retry can fix
+        assertFalse(emailNotificationService.canDeliver(analysedContext(noRecipient, sixMonthWindow(), ANALYSIS_TEXT)),
+                "Reason: with nobody to email the caller must not pay for an analysis");
         verify(mailSender, never()).send(any(MimeMessage.class));
     }
 
     @Test
     @DisplayName("a missing reportEmail field is treated the same as a blank one")
-    void execute_nullReportEmailSkipsSendingTest() {
+    void canDeliver_nullReportEmailIsFalseTest() {
         UserStatisticAnalysisRequestEvent noRecipient = UserStatisticAnalysisRequestEvent.builder()
                 .tenantId(TENANT_ID).userId(USER_ID).entries(sevenMonthHistory()).build();
 
-        emailNotificationService.execute(analysedContext(noRecipient, sixMonthWindow(), ANALYSIS_TEXT));
-
-        verify(mailSender, never()).send(any(MimeMessage.class));
+        assertFalse(emailNotificationService.canDeliver(analysedContext(noRecipient, sixMonthWindow(), ANALYSIS_TEXT)));
     }
 
     @Test
-    @DisplayName("with notifications disabled the pipeline runs but sends nothing")
-    void execute_disabledSendsNothingTest() {
+    @DisplayName("with notifications disabled the analysis cannot be delivered")
+    void canDeliver_disabledIsFalseTest() {
         configuration.setNotificationEnabled(false);
         try {
-            emailNotificationService.execute(analysedContext());
-            verify(mailSender, never()).send(any(MimeMessage.class));
+            assertFalse(emailNotificationService.canDeliver(analysedContext()),
+                    "Reason: an analysis that cannot be mailed is not worth a paid call");
         } finally {
             configuration.setNotificationEnabled(true);
         }
