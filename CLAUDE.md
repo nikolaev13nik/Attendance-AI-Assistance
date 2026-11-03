@@ -81,7 +81,7 @@ att.user-statistic-ai-analysis
      -> StatisticAnalysisService      the pipeline: every main step is called from here, in order
         1. PromptComposer.applyHistoryWindow   sorts newest-first, trims to att.ai.analysis.history-months
         2. PromptComposer.composePrompt        renders the window placed by step 1
-        3. LlmAnalysisClient.analyse           StubLlmAnalysisClient returns a fixed string for now
+        3. LlmAnalysisClient.analyse           stub by default, AnthropicLlmAnalysisClient when provider=anthropic
         4. EmailNotificationService.notifyRequester   MimeMessage to event.reportEmail
              -> EmailContentBuilder            subject + HTML body, naming event.userName or the userId
 ```
@@ -290,9 +290,10 @@ belongs.
 
 ## Known gaps — don't assume these exist
 
-- **No real LLM.** `StubLlmAnalysisClient` returns a hard-coded string. When adding a real client, gate the
-  two on a property rather than deleting the stub: it is what keeps the pipeline testable without calling
-  a paid API.
+- **The real model is opt-in.** `att.ai.llm.provider` selects the client: `stub` (the default)
+  returns a hard-coded string, `anthropic` uses `AnthropicLlmAnalysisClient` (Claude Sonnet 5.5,
+  `ANTHROPIC_API_KEY`). The Helm chart sets `anthropic`; tests and local runs keep the stub. Never delete
+  the stub: it is what keeps the pipeline testable without calling a paid API.
 - **The analysed employee's name can be missing.** `userName` carries their first and last name, but it is
   optional: TimeTracking skips it when the Accounting lookup fails rather than failing the whole report, and
   messages produced before the field existed have none. `EmailContentHandler.analysedUser` therefore falls
