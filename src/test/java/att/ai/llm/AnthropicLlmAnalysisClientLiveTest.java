@@ -28,7 +28,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @EnabledIfEnvironmentVariable(named = "ANTHROPIC_API_KEY", matches = ".+")
 @DisplayName("AnthropicLlmAnalysisClient against the real API: the production prompt comes back as usable prose")
 class AnthropicLlmAnalysisClientLiveTest extends AnalysisFixtures {
-    private static final String MODEL = "claude-sonnet-5";
+    private static final String MODEL = "claude-sonnet-5-5";
     private static final long MAX_TOKENS = 4000L;
     private static final int TIMEOUT_SECONDS = 60;
 

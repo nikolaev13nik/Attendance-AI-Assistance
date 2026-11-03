@@ -22,7 +22,7 @@ public class AssistanceConfiguration {
     @Value("${att.ai.llm.provider:stub}")
     private String llmProvider;
 
-    @Value("${att.ai.llm.model:claude-sonnet-5}")
+    @Value("${att.ai.llm.model:claude-sonnet-5-5}")
     private String llmModel;
 
     @Value("${att.ai.llm.max-tokens:4000}")

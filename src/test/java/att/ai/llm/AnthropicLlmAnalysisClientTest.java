@@ -41,7 +41,7 @@ import static org.mockito.Mockito.when;
 @DisplayName("AnthropicLlmAnalysisClient: one paid call per prompt, and failures split by whether a retry could help")
 class AnthropicLlmAnalysisClientTest {
     private static final String PROMPT = "Month    Work days\n2024-01         22";
-    private static final String MODEL = "claude-sonnet-5";
+    private static final String MODEL = "claude-sonnet-5-5";
     private static final long MAX_TOKENS = 4000L;
 
     @Mock

@@ -59,7 +59,6 @@ public class AnthropicLlmAnalysisClient implements LlmAnalysisClient {
         MessageCreateParams params = MessageCreateParams.builder()
             .model(configuration.getLlmModel())
             .maxTokens(configuration.getLlmMaxTokens())
-
             .outputConfig(OutputConfig.builder().effort(OutputConfig.Effort.LOW).build())
             .system(OUTPUT_FORMAT)
             .addUserMessage(prompt)

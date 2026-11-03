@@ -77,7 +77,7 @@ class AssistanceConfigurationTest {
             assertEquals("stub", configuration.getLlmProvider(),
                 "Reason: the free client must be the default everywhere, so that forgetting to set "
                     + "the provider can never start spending credits");
-            assertEquals("claude-sonnet-5", configuration.getLlmModel(),
+            assertEquals("claude-sonnet-5-5", configuration.getLlmModel(),
                 "Reason: the model id is a default, not a required setting, so a chart that sets "
                     + "nothing still produces a valid request");
             assertEquals(4000L, configuration.getLlmMaxTokens(),

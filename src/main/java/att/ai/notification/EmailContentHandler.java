@@ -31,7 +31,7 @@ public class EmailContentHandler {
                 <body style="font-family:-apple-system,Segoe UI,Helvetica,Arial,sans-serif;font-size:14px;\
                 line-height:1.5;color:#1a1a1a;">
                   <p>%s</p>
-              <p>Here is the work-time analysis you requested for <strong>%s</strong>.</p>
+                  <p>Here is the work-time analysis you requested for <strong>%s</strong>.</p>
                   %s
                   %s
                   <p style="color:#6b6b6b;font-size:12px;">Generated automatically by Attendance AI Assistance.

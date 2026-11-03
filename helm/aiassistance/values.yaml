@@ -31,7 +31,7 @@ analysis:
 
 llm:
   provider: "anthropic"
-  model: "claude-sonnet-5"
+  model: "claude-sonnet-5-5"
   maxTokens: "4000"
   timeoutSeconds: "40"
   maxRetries: "1"
