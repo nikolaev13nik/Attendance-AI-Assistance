@@ -15,6 +15,8 @@ import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 import lombok.RequiredArgsConstructor;
 
+import static org.apache.commons.lang3.BooleanUtils.isFalse;
+
 @Service
 @RequiredArgsConstructor
 public class EmailNotificationService {
@@ -27,7 +29,7 @@ public class EmailNotificationService {
 
     public void execute(AnalysisContext context) {
         UserStatisticAnalysisRequestEvent event = context.getEvent();
-        if (!configuration.isNotificationEnabled()) {
+        if (isFalse(configuration.isNotificationEnabled())) {
             log.info("Mail disabled, not sending the analysis for tenant:{} user:{}",
                     event.getTenantId(), event.getUserId());
             return;

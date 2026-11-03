@@ -24,7 +24,7 @@
         <anthropic.version>2.34.0</anthropic.version>
 
         <excluded.test.groups>llm</excluded.test.groups>
-		<attendance-common-lib.version>0.1.1</attendance-common-lib.version>
+		<attendance-common-lib.version>0.1.2</attendance-common-lib.version>
 	</properties>
 
 	<dependencyManagement>

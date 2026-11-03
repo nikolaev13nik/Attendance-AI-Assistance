@@ -51,7 +51,7 @@ public class StatisticAnalysisConsumer {
 
     private void validate(UserStatisticAnalysisRequestEvent event) {
         Set<ConstraintViolation<UserStatisticAnalysisRequestEvent>> violations = validator.validate(event);
-        if (!violations.isEmpty()) {
+        if (isFalse(violations.isEmpty())) {
             throw new ConstraintViolationException(violations);
         }
     }
